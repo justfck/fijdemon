@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fijMVC>
+	<behavior><!--主体行为类--><common><!--做通用方法啊通用的什么什么的--></common>
+		<model><!--模型--></model><view><!--视图--></view><conctroller><!--控制器--></conctroller>
+		<sql><!--数据库封装--></sql></behavior><plugup><!--插件--></plugup><tpl><!--模板--></tpl><FijMVC.php>主入口文件</FijMVC.php><doc><!--相关文档-->
+	<floder.xml>文件夹结构文档</floder.xml></doc>
+	<data><!--数据文件--><config><!--默认配置文件--><config.php>默认配置文件</config.php></config></data></fijMVC>
