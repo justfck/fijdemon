@@ -32,6 +32,18 @@ abstract class Controller{
         $this->view = new View();
     }
     
+    /**
+     +--------------------------------------------------
+     * 模板变量赋值
+     +--------------------------------------------------
+     * @access public
+     * @param mixed $name
+     * @param mixed $value
+     +--------------------------------------------------
+     */
+    public function assign($name,$value=''){
+        $this->view->assign($name,$value);
+    }
     
     /**
      +--------------------------------------------------

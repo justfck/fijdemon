@@ -68,16 +68,19 @@ class View{
      * @param string $templateFile 指定要调用的模板文件
      * @param string $charset 输出编码
      * @param string $contentType 输出类型
-     * @param string $content 输出内容
      * @param string $prefix 模板缓存前缀
      * @return void
      +--------------------------------------------------
      */
-    public function display($templateFile='', $charset='', $contentType='', $content='' ,$prefix=''){
+    public function display($templateFile='', $charset='', $contentType='' ,$prefix=''){
         // 解析模板内容
-        $content = $this->fetch($templateFile, $content, $prefix);
+        $content = $this->fetch($templateFile, $prefix);
+        
+        // 保存入缓存文件
+        $temFile = $this->Runtime($templateFile,$content);
+        
         // 输出模板内容
-        $this->render($content, $charset, $contentType);
+        $this->render($temFile, $charset, $contentType);
     }
     
     
@@ -86,45 +89,64 @@ class View{
      +--------------------------------------------------
      * @access public
      * @param string $templateFile 模板文件名
-     * @param string $content 模板输出内容
      * @param string $prefix 模板缓存前缀
      * @return string
      +--------------------------------------------------
      */
-    public function fetch($templateFile='',$content='',$prefix='') {
-        if(empty($content)) {
-            $templateFile   =   $this->parseTemplate($templateFile);
-            // 模板文件不存在直接返回
-            if(!is_file($templateFile)) throw_exception("未找到模板：".$templateFile,404);
+    public function fetch($templateFile='',$prefix='') {
+        $templateFile   =   $this->parseTemplate($templateFile);
+        // 模板文件不存在直接返回
+        if(!is_file($templateFile)) throw_exception("未找到模板：".$templateFile,404);
+//         // 页面缓存
+//         ob_start();
+//         ob_implicit_flush(0);
+        // 载入PHP模板
+       $temFile = $this->makeRuntimeTpl($templateFile);
+        if(file_exists($temFile) && filemtime($temFile)> filemtime($templateFile)){//如果缓存文件存在则 并且文件没有修改了用缓存
+            // 用缓存
+            $content = file_get_contents($temFile);
+        }else{
+            // 加载解析
+            $content = file_get_contents($templateFile);
+            $content = $this->con_replace($content);
         }
-        // 页面缓存
-        ob_start();
-        ob_implicit_flush(0);
-//         if('php' == strtolower(C('TMPL_ENGINE_TYPE'))) { // 使用PHP原生模板
-            // 模板阵列变量分解成为独立变量
-            extract($this->tVar, EXTR_OVERWRITE);
-            // 直接载入PHP模板
-            empty($content)?include $templateFile:eval('?>'.$content);
-//         }else{
-//         }
         // 获取并清空缓存
-        $content = ob_get_clean();
+//         $content = ob_get_clean();
         // 输出模板文件
         return $content;
     }
-
+    
+    /**
+     * 添加到缓存文件中去
+     +--------------------------------------------------
+     * @param 源文件路径 $templateFile
+     * @param 源文件已经被编译好的内容 $content
+     * @return string 缓存文件路径
+     +--------------------------------------------------
+     */
+    private function Runtime($templateFile,$content){
+        // 写入runtime
+        $temFile = $this->makeRuntimeTpl($templateFile);
+        file_put_contents($temFile,$content);
+        
+        return $temFile;
+    }
+    
+    
     /**
      +--------------------------------------------------
      * 输出内容文本可以包括Html
      +--------------------------------------------------
      * @access private
-     * @param string $content 输出内容
+     * @param string $temFile 要输出的文件
      * @param string $charset 模板输出字符集
      * @param string $contentType 输出类型
      * @return mixed
      +--------------------------------------------------
      */
-    private function render($content,$charset='',$contentType=''){
+    private function render($temFile,$charset='',$contentType=''){
+        // 模板阵列变量分解成为独立变量
+        extract($this->tVar, EXTR_OVERWRITE);
         if(empty($charset))  $charset = C('DEFAULT_CHARSET');
         if(empty($contentType)) $contentType = C('TMPL_CONTENT_TYPE');
         // 网页字符编码
@@ -132,7 +154,22 @@ class View{
         header('Cache-control: '.C('HTTP_CACHE_CONTROL'));  // 页面缓存控制
         header('X-Powered-By:ThinkPHP');
         // 输出模板文件
-        echo $content;
+       include $temFile;
+    }
+    
+    /**
+     * 解析变量
+     * @param string $content
+     * @return string
+     */
+    public function con_replace($content){
+        $pattern=array(
+            '/{\s*\$([a-zA-Z_][a-zA-Z_0-9]*)\s*}/i'
+        );
+        $replacement=array(
+            '<?php echo $${1} ?>'
+        );
+        return preg_replace($pattern,$replacement,$content);
     }
     
     /**
@@ -175,6 +212,17 @@ class View{
 //             $file   =   dirname(THEME_PATH).'/'.C('DEFAULT_THEME').'/'.$template.C('TMPL_TEMPLATE_SUFFIX');
 //         }
         return $file;
+    }
+    
+    /**
+     * 生成缓存文件文件名
+     +----------------------------------------------------
+     * @param string $template
+     * @return string
+     +----------------------------------------------------
+     */
+    private function makeRuntimeTpl($template){
+        return  __ROOT__.DIRECTORY_SEPARATOR."Runtime".DIRECTORY_SEPARATOR."tpl".DIRECTORY_SEPARATOR.md5($template);
     }
 }
 
